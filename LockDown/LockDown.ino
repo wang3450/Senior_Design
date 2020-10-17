@@ -12,7 +12,6 @@ class ServerCallbacks: public NimBLEServerCallbacks {
     void onConnect(NimBLEServer* pServer) {
         Serial.println("Client connected");
         Serial.println("Multi-connect support: start advertising");
-        NimBLEDevice::startAdvertising();
     };
     /** Alternative onConnect() method to extract details of the connection. 
      *  See: src/ble_gap.h for the details of the ble_gap_conn_desc struct.
@@ -28,6 +27,9 @@ class ServerCallbacks: public NimBLEServerCallbacks {
          *  Timeout: 10 millisecond increments, try for 5x interval time for best results.  
          */
         pServer->updateConnParams(desc->conn_handle, 24, 48, 0, 60);
+    };
+    void onDisconnect(NimBLEServer * pServer){
+        Serial.println("Client Disconnected! ");
     };
 };
 
