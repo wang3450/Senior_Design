@@ -1,7 +1,8 @@
 /** BLE Server
  *  Written By Joseph Wang
 */
-
+//1 = locked
+//0 = unlocked
 #include <NimBLEDevice.h>
 
 static NimBLEServer* pServer;
@@ -9,14 +10,11 @@ static NimBLEServer* pServer;
 /**  None of these are required as they will be handled by the library with defaults. **
  **                       Remove as you see fit for your needs                        */  
 class ServerCallbacks: public NimBLEServerCallbacks {
-    void onConnect(NimBLEServer* pServer) {
-        Serial.println("Client connected");
-        Serial.println("Multi-connect support: start advertising");
-    };
     /** Alternative onConnect() method to extract details of the connection. 
      *  See: src/ble_gap.h for the details of the ble_gap_conn_desc struct.
      */  
     void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {
+        Serial.println("Client Connected: ");
         Serial.print("Client address: ");
         Serial.println(NimBLEAddress(desc->peer_ota_addr).toString().c_str());
         /** We can use the connection handle here to ask for different connection parameters.
@@ -39,6 +37,7 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
         Serial.print(pCharacteristic->getUUID().toString().c_str());
         Serial.print(": onRead(), value: ");
         Serial.println(pCharacteristic->getValue().c_str());
+        
     };
 
     void onWrite(NimBLECharacteristic* pCharacteristic) {
