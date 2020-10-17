@@ -73,6 +73,24 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
     void onNotify(NimBLECharacteristic* pCharacteristic) {
         Serial.println("Sending notification to clients");
     };
+    void onSubscribe(NimBLECharacteristic* pCharacteristic, ble_gap_conn_desc* desc, uint16_t subValue) {
+        String str = "Client ID: ";
+        str += desc->conn_handle;
+        str += " Address: ";
+        str += std::string(NimBLEAddress(desc->peer_ota_addr)).c_str();
+        if(subValue == 0) {
+            str += " Unsubscribed to ";
+        }else if(subValue == 1) {
+            str += " Subscribed to notfications for ";
+        } else if(subValue == 2) {
+            str += " Subscribed to indications for ";
+        } else if(subValue == 3) {
+            str += " Subscribed to notifications and indications for ";
+        }
+        str += std::string(pCharacteristic->getUUID()).c_str();
+
+        Serial.println(str);
+    };
 };
     
 /** Handler class for descriptor actions */    
