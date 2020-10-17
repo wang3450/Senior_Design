@@ -29,6 +29,28 @@ class ServerCallbacks: public NimBLEServerCallbacks {
     void onDisconnect(NimBLEServer * pServer){
         Serial.println("Client Disconnected! ");
     };
+    uint32_t onPassKeyRequest(){
+        Serial.println("Server Passkey Request");
+        /** This should return a random 6 digit number for security 
+         *  or make your own static passkey as done here.
+         */
+        return 123456; 
+    };
+
+    bool onConfirmPIN(uint32_t pass_key){
+        Serial.print("The passkey YES/NO number: ");Serial.println(pass_key);
+        /** Return false if passkeys don't match. */
+        return true; 
+    };
+    void onAuthenticationComplete(ble_gap_conn_desc* desc){
+        /** Check that encryption was successful, if not we disconnect the client */  
+        if(!desc->sec_state.encrypted) {
+            NimBLEDevice::getServer()->disconnect(desc->conn_handle);
+            Serial.println("Encrypt connection failed - disconnecting client");
+            return;
+        }
+        Serial.println("Starting BLE work!");
+    };
 };
 
 /** Handler class for characteristic actions */
@@ -81,7 +103,9 @@ void setup() {
     NimBLEDevice::init("kath");
 
     NimBLEDevice::setPower(ESP_PWR_LVL_P9); 
-    
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY); // use passkey
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_YESNO); //use numeric comparison
+    NimBLEDevice::setSecurityAuth(BLE_SM_PAIR_AUTHREQ_BOND | BLE_SM_PAIR_AUTHREQ_MITM | BLE_SM_PAIR_AUTHREQ_SC);
     pServer = NimBLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
 
@@ -89,7 +113,9 @@ void setup() {
     NimBLECharacteristic* pLockCharacteristic = pLockService->createCharacteristic(
                                                "b4be2db8-100e-11eb-adc1-0242ac120002",
                                                NIMBLE_PROPERTY::READ |
-                                               NIMBLE_PROPERTY::WRITE
+                                               NIMBLE_PROPERTY::WRITE |
+                                               NIMBLE_PROPERTY::READ_ENC |
+                                               NIMBLE_PROPERTY::WRITE_ENC
                                               );
   
     pLockCharacteristic->setValue("lock_unlock");
@@ -123,5 +149,13 @@ void setup() {
 
 
 void loop() {
-  delay(2000);
+    if(pServer->getConnectedCount()){
+        NimBLEService * pSvc = pServer -> getServiceByUUID("6eb697ea-1010-11eb-adc1-0242ac120002");
+        if(pSvc){
+            NimBLECharacteristic * pChr = pSvc ->getCharacteristic("987125b0-100f-11eb-adc1-0242ac120002");
+            if(pChr){
+                pChr->notify(true);
+            }
+        }
+    }
 }
