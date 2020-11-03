@@ -71,20 +71,8 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
         Serial.println(pCharacteristic->getValue().c_str());
         if(pCharacteristic->getValue() == "1"){
             ledcWriteTone(channel, 2000);
-            for(int dutyCycle = 0; dutyCycle <= 255; dutyCycle += 10){
-                Serial.print(dutyCycle);
-                ledcWrite(channel,dutyCycle);
-                delay(1000);
-            }
-            ledcWrite(channel, 125);
-            for(int freq = 255; freq <= 10000; freq += 250){
-                Serial.println(freq);
-                ledcWriteTone(channel,freq);
-                delay(1000);
-            }
         }
         else if(pCharacteristic->getValue() == "0"){
-            ledcWriteTone(channel, 2000);
             ledcWriteTone(channel, 0);
         }
     };
