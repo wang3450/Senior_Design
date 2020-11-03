@@ -1,11 +1,14 @@
 /** BLE Server
- *  Written By Joseph Wang
+ *  Written By Joseph Wang © Locksmiths 2020
 */
 //1 = locked
 //0 = unlocked
 #include <NimBLEDevice.h>
 
 static NimBLEServer* pServer;
+static int freq = 2000;
+static int channel = 0;
+static int resolution = 8;
 
 /**  None of these are required as they will be handled by the library with defaults. **
  **                       Remove as you see fit for your needs                        */  
@@ -66,6 +69,24 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
         Serial.print(pCharacteristic->getUUID().toString().c_str());
         Serial.print(": onWrite(), value: ");
         Serial.println(pCharacteristic->getValue().c_str());
+        if(pCharacteristic->getValue() == "1"){
+            ledcWriteTone(channel, 2000);
+            for(int dutyCycle = 0; dutyCycle <= 255; dutyCycle += 10){
+                Serial.print(dutyCycle);
+                ledcWrite(channel,dutyCycle);
+                delay(1000);
+            }
+            ledcWrite(channel, 125);
+            for(int freq = 255; freq <= 10000; freq += 250){
+                Serial.println(freq);
+                ledcWriteTone(channel,freq);
+                delay(1000);
+            }
+        }
+        else if(pCharacteristic->getValue() == "0"){
+            ledcWriteTone(channel, 2000);
+            ledcWriteTone(channel, 0);
+        }
     };
     /** Called before notification or indication is sent, 
      *  the value can be changed here before sending if desired.
@@ -120,6 +141,7 @@ void setup() {
     /** sets device name */
     NimBLEDevice::init("kath");
 
+    
     NimBLEDevice::setPower(ESP_PWR_LVL_P9); 
     NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY); // use passkey
     NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_YESNO); //use numeric comparison
@@ -147,15 +169,31 @@ void setup() {
     NimBLE2904* pLock2904 = (NimBLE2904*)pLockCharacteristic->createDescriptor("987125b0-100f-11eb-adc1-0242ac120002"); 
     pLock2904->setFormat(NimBLE2904::FORMAT_UTF8);
     pLock2904->setCallbacks(&dscCallbacks);
+
+    NimBLEService *pSpeakerService = pServer->createService("c651a18c-1e0e-11eb-adc1-0242ac120002");
+    NimBLECharacteristic *pSpeakerCharacteristic = pSpeakerService->createCharacteristic(
+                                                "21a66e1e-1e0f-11eb-adc1-0242ac120002",
+                                                NIMBLE_PROPERTY::READ |
+                                                NIMBLE_PROPERTY::WRITE |
+                                                NIMBLE_PROPERTY::READ_ENC |
+                                                NIMBLE_PROPERTY::WRITE_ENC
+                                                );
+    pSpeakerCharacteristic->setValue("0");
+    pSpeakerCharacteristic->setCallbacks(&chrCallbacks);
+    
+    NimBLE2904* pSpeaker2904 = (NimBLE2904*)pSpeakerCharacteristic->createDescriptor("c36f8e7e-1e0f-11eb-adc1-0242ac120002"); 
+    pSpeaker2904->setFormat(NimBLE2904::FORMAT_UTF8);
+    pSpeaker2904->setCallbacks(&dscCallbacks);
   
 
 
     /** Start the services when finished creating all Characteristics and Descriptors */  
     pLockService->start();
-
+    pSpeakerService->start();
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     /** Add the services to the advertisment data **/
     pAdvertising->addServiceUUID(pLockService->getUUID());
+    pAdvertising->addServiceUUID(pSpeakerService->getUUID());
     /** If your device is battery powered you may consider setting scan response
      *  to false as it will extend battery life at the expense of less data sent.
      */
@@ -163,17 +201,13 @@ void setup() {
     pAdvertising->start();
 
     Serial.println("Advertising Started");
+    ledcSetup(channel, freq, resolution);
+    ledcAttachPin(26, channel);
+    delay(1000);
+    Serial.println("Ready For Buzzer!!!");
 }
 
 
 void loop() {
-    if(pServer->getConnectedCount()){
-        NimBLEService * pSvc = pServer -> getServiceByUUID("6eb697ea-1010-11eb-adc1-0242ac120002");
-        if(pSvc){
-            NimBLECharacteristic * pChr = pSvc ->getCharacteristic("987125b0-100f-11eb-adc1-0242ac120002");
-            if(pChr){
-                pChr->notify(true);
-            }
-        }
-    }
+    
 }
