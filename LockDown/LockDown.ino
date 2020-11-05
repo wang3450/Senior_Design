@@ -69,12 +69,15 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
         Serial.print(pCharacteristic->getUUID().toString().c_str());
         Serial.print(": onWrite(), value: ");
         Serial.println(pCharacteristic->getValue().c_str());
-        if(pCharacteristic->getValue() == "1"){
-            ledcWriteTone(channel, 2000);
+        if(pCharacteristic->getDescriptorByUUID("c36f8e7e-1e0f-11eb-adc1-0242ac120002") != nullptr){
+            if(pCharacteristic->getValue() == "1"){
+                ledcWriteTone(channel, 2000);
+            }
+            else if(pCharacteristic->getValue() == "0"){
+                ledcWriteTone(channel, 0);
+            }
         }
-        else if(pCharacteristic->getValue() == "0"){
-            ledcWriteTone(channel, 0);
-        }
+        
     };
     /** Called before notification or indication is sent, 
      *  the value can be changed here before sending if desired.
@@ -154,9 +157,15 @@ void setup() {
      *  However we must cast the returned reference to the correct type as the method
      *  only returns a pointer to the base NimBLEDescriptor class.
      */
-    NimBLE2904* pLock2904 = (NimBLE2904*)pLockCharacteristic->createDescriptor("987125b0-100f-11eb-adc1-0242ac120002"); 
-    pLock2904->setFormat(NimBLE2904::FORMAT_UTF8);
-    pLock2904->setCallbacks(&dscCallbacks);
+    NimBLEDescriptor* pLockDescriptor = pLockCharacteristic->createDescriptor(
+                                               "987125b0-100f-11eb-adc1-0242ac120002",
+                                               NIMBLE_PROPERTY::READ | 
+                                               NIMBLE_PROPERTY::WRITE|
+                                               NIMBLE_PROPERTY::WRITE_ENC, // only allow writing if paired / encrypted
+                                               20
+                                              );
+    pLockDescriptor->setValue("lock");
+    pLockDescriptor->setCallbacks(&dscCallbacks);
 
     NimBLEService *pSpeakerService = pServer->createService("c651a18c-1e0e-11eb-adc1-0242ac120002");
     NimBLECharacteristic *pSpeakerCharacteristic = pSpeakerService->createCharacteristic(
@@ -169,9 +178,15 @@ void setup() {
     pSpeakerCharacteristic->setValue("0");
     pSpeakerCharacteristic->setCallbacks(&chrCallbacks);
     
-    NimBLE2904* pSpeaker2904 = (NimBLE2904*)pSpeakerCharacteristic->createDescriptor("c36f8e7e-1e0f-11eb-adc1-0242ac120002"); 
-    pSpeaker2904->setFormat(NimBLE2904::FORMAT_UTF8);
-    pSpeaker2904->setCallbacks(&dscCallbacks);
+    NimBLEDescriptor* pSpeakerDescriptor = pSpeakerCharacteristic->createDescriptor(
+                                               "c36f8e7e-1e0f-11eb-adc1-0242ac120002",
+                                               NIMBLE_PROPERTY::READ | 
+                                               NIMBLE_PROPERTY::WRITE|
+                                               NIMBLE_PROPERTY::WRITE_ENC, // only allow writing if paired / encrypted
+                                               20
+                                              );
+    pSpeakerDescriptor->setValue("speaker");
+    pSpeakerDescriptor->setCallbacks(&dscCallbacks);
   
 
 
