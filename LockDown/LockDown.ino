@@ -4,18 +4,23 @@
 //1 = locked
 //0 = unlocked
 #include <NimBLEDevice.h>
+#define LED 21  // led is connected with gpio 23
+#define motor1Pin1 27 // motor input A is connected with gpio 27
+#define motor1Pin2 26 // motor input B is connected with gpio 26
+#define motor2Pin1 25 // motor input A is connected with gpio 27
+#define motor2Pin2 33 // motor input B is connected with gpio 26
+#define motor1enb 32 // motor input B is connected with gpio 26
+#define motor2enb 35 // motor input B is connected with gpio 26
+#define Button2 16 // if pressed then a match of fingerprint.
+#define Button 22 // button is connected with gpio 23
 
+static int flag = 0;
 static NimBLEServer* pServer;
 static int freq = 2000;
 static int channel = 0;
 static int resolution = 8;
-
-/**  None of these are required as they will be handled by the library with defaults. **
- **                       Remove as you see fit for your needs                        */  
+ 
 class ServerCallbacks: public NimBLEServerCallbacks {
-    /** Alternative onConnect() method to extract details of the connection. 
-     *  See: src/ble_gap.h for the details of the ble_gap_conn_desc struct.
-     */  
     void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) {
         Serial.println("Client Connected: ");
         Serial.print("Client address: ");
@@ -77,8 +82,24 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
                 ledcWriteTone(channel, 0);
             }
         }
-        
+        else if(pCharacteristic->getValue() == "1"){
+            Serial.println("I wish to lock");
+            digitalWrite(motor1Pin1, HIGH);
+            digitalWrite(motor1Pin2, LOW); 
+            digitalWrite(motor2Pin1, HIGH);
+            digitalWrite(motor2Pin2, LOW);
+            delay(1000);
+        }
+        else if(pCharacteristic->getValue() == "0"){
+            Serial.println("I wish to unlock");
+            digitalWrite(motor1Pin1, LOW);
+            digitalWrite(motor1Pin2, HIGH); 
+            digitalWrite(motor2Pin1, LOW);
+            digitalWrite(motor2Pin2, HIGH);
+            delay(1000);   
+        }
     };
+    
     /** Called before notification or indication is sent, 
      *  the value can be changed here before sending if desired.
      */
@@ -205,12 +226,26 @@ void setup() {
 
     Serial.println("Advertising Started");
     ledcSetup(channel, freq, resolution);
-    ledcAttachPin(26, channel);
+    ledcAttachPin(23, channel);
     delay(1000);
     Serial.println("Ready For Buzzer!!!");
+    
+    pinMode(motor1Pin1, OUTPUT);
+    pinMode(motor1Pin2, OUTPUT);
+    pinMode(motor2Pin1, OUTPUT);
+    pinMode(motor2Pin2, OUTPUT);
+    pinMode(motor1enb,OUTPUT);
+    pinMode(motor2enb,OUTPUT);
+    pinMode(LED, OUTPUT);
+    pinMode(Button, INPUT);
+    pinMode(Button2, INPUT);
+
+    //set the enable high so solenoid can turn on
+    digitalWrite(motor1enb, HIGH);
+    digitalWrite(motor2enb, HIGH);
+    Serial.println("test");
 }
 
 
 void loop() {
-    
 }
