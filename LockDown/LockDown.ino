@@ -10,7 +10,7 @@
 #define motor2Pin1 25 // motor input A is connected with gpio 27
 #define motor2Pin2 33 // motor input B is connected with gpio 26
 #define motor1enb 32 // motor input B is connected with gpio 26
-#define motor2enb 35 // motor input B is connected with gpio 26
+#define motor2enb 14 // motor input B is connected with gpio 26
 #define Button2 16 // if pressed then a match of fingerprint.
 #define Button 22 // button is connected with gpio 23
 
