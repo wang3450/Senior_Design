@@ -4,6 +4,9 @@
 //1 = locked
 //0 = unlocked
 #include <NimBLEDevice.h>
+#include <Adafruit_Fingerprint.h>
+#include "custom_finger.h"
+
 #define LED 21  // led is connected with gpio 23
 #define motor1Pin1 27 // motor input A is connected with gpio 27
 #define motor1Pin2 26 // motor input B is connected with gpio 26
@@ -13,6 +16,10 @@
 #define motor2enb 14 // motor input B is connected with gpio 26
 #define Button2 16 // if pressed then a match of fingerprint.
 #define Button 22 // button is connected with gpio 23
+#define wakeUp 4
+
+HardwareSerial mySerial(2);
+custom_finger finger = custom_finger(&mySerial);
 
 static int flag = 0;
 static NimBLEServer* pServer;
@@ -84,19 +91,11 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
         }
         else if(pCharacteristic->getValue() == "1"){
             Serial.println("I wish to lock");
-            digitalWrite(motor1Pin1, HIGH);
-            digitalWrite(motor1Pin2, LOW); 
-            digitalWrite(motor2Pin1, HIGH);
-            digitalWrite(motor2Pin2, LOW);
-            delay(1000);
+            flag = 1;
         }
         else if(pCharacteristic->getValue() == "0"){
             Serial.println("I wish to unlock");
-            digitalWrite(motor1Pin1, LOW);
-            digitalWrite(motor1Pin2, HIGH); 
-            digitalWrite(motor2Pin1, LOW);
-            digitalWrite(motor2Pin2, HIGH);
-            delay(1000);   
+            flag = 0;  
         }
     };
     
@@ -244,8 +243,43 @@ void setup() {
     digitalWrite(motor1enb, HIGH);
     digitalWrite(motor2enb, HIGH);
     Serial.println("test");
+
+    if (finger.fingerprint_init()){
+      Serial.println("Found Sensor");
+    } 
+    else {
+      Serial.println("Could not find Sensor");
+      while(1);;
+    }
+    finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
+    pinMode(wakeUp,INPUT_PULLUP);
 }
 
 
 void loop() {
+  if(digitalRead(wakeUp) == LOW){
+    if(finger.verify() == FINGERPRINT_OK){
+      if(flag == 0){
+        flag = 1;
+      }
+      else if(flag == 1){
+        flag = 0;
+      }
+    }
+  }
+  if(flag == 1){
+    digitalWrite(motor1Pin1, HIGH);
+    digitalWrite(motor1Pin2, LOW); 
+    digitalWrite(motor2Pin1, HIGH);
+    digitalWrite(motor2Pin2, LOW);
+    delay(1000);
+  }
+  else if(flag == 0){
+    digitalWrite(motor1Pin1, LOW);
+    digitalWrite(motor1Pin2, HIGH); 
+    digitalWrite(motor2Pin1, LOW);
+    digitalWrite(motor2Pin2, HIGH);
+    delay(1000); 
+  }
+  
 }
