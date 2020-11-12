@@ -21,6 +21,8 @@
 HardwareSerial mySerial(2);
 custom_finger finger = custom_finger(&mySerial);
 
+static int del = 0;
+static int enroll = 0;
 static int flag = 0;
 static NimBLEServer* pServer;
 static int freq = 2000;
@@ -89,14 +91,38 @@ class CharacteristicCallbacks: public NimBLECharacteristicCallbacks {
                 ledcWriteTone(channel, 0);
             }
         }
-        else if(pCharacteristic->getValue() == "1"){
-            Serial.println("I wish to lock");
-            flag = 1;
+        else if(pCharacteristic->getDescriptorByUUID("987125b0-100f-11eb-adc1-0242ac120002") != nullptr){
+            if(pCharacteristic->getValue() == "1"){
+                Serial.println("I wish to lock");
+                flag = 1;
+            }
+            else if(pCharacteristic->getValue() == "0"){
+                Serial.println("I wish to unlock");
+                flag = 0;  
+            }   
         }
-        else if(pCharacteristic->getValue() == "0"){
-            Serial.println("I wish to unlock");
-            flag = 0;  
+        else if(pCharacteristic->getDescriptorByUUID("e5a1f918-249b-11eb-adc1-0242ac120002") != nullptr){
+            if(pCharacteristic->getValue() == "1"){
+                Serial.println("I wish to enroll");
+                enroll = 1;
+            }
+            else if(pCharacteristic->getValue() == "0"){
+                Serial.println("I don't want to enroll");
+                enroll = 1;
+            }
         }
+        else if(pCharacteristic->getDescriptorByUUID("012f3d34-249d-11eb-adc1-0242ac120002")){
+            if(pCharacteristic->getValue() == "1"){
+                Serial.println("I wish to delete all fingerprints");
+                del = 1;
+            }
+            else if(pCharacteristic->getValue() == "0"){
+                Serial.println("I don't want to delete fingerprints");
+                del = 0;
+            }
+        }
+        
+        
     };
     
     /** Called before notification or indication is sent, 
@@ -172,11 +198,6 @@ void setup() {
     pLockCharacteristic->setValue("lock_unlock");
     pLockCharacteristic->setCallbacks(&chrCallbacks);
 
-    /** 2904 descriptors are a special case, when createDescriptor is called with
-     *  0x2904 a NimBLE2904 class is created with the correct properties and sizes.
-     *  However we must cast the returned reference to the correct type as the method
-     *  only returns a pointer to the base NimBLEDescriptor class.
-     */
     NimBLEDescriptor* pLockDescriptor = pLockCharacteristic->createDescriptor(
                                                "987125b0-100f-11eb-adc1-0242ac120002",
                                                NIMBLE_PROPERTY::READ | 
@@ -207,19 +228,66 @@ void setup() {
                                               );
     pSpeakerDescriptor->setValue("speaker");
     pSpeakerDescriptor->setCallbacks(&dscCallbacks);
+
+    NimBLEService* pEnrollService = pServer->createService("b809ff46-249b-11eb-adc1-0242ac120002");
+    NimBLECharacteristic* pEnrollCharacteristic = pEnrollService->createCharacteristic(
+                                               "cb7e753e-249b-11eb-adc1-0242ac120002",
+                                               NIMBLE_PROPERTY::READ |
+                                               NIMBLE_PROPERTY::WRITE |
+                                               NIMBLE_PROPERTY::READ_ENC |
+                                               NIMBLE_PROPERTY::WRITE_ENC
+                                              );
+  
+    pEnrollCharacteristic->setValue("0");
+    pEnrollCharacteristic->setCallbacks(&chrCallbacks);
+
+    NimBLEDescriptor* pEnrollDescriptor = pEnrollCharacteristic->createDescriptor(
+                                               "e5a1f918-249b-11eb-adc1-0242ac120002",
+                                               NIMBLE_PROPERTY::READ | 
+                                               NIMBLE_PROPERTY::WRITE|
+                                               NIMBLE_PROPERTY::WRITE_ENC, // only allow writing if paired / encrypted
+                                               20
+                                              );
+    pEnrollDescriptor->setValue("enroll");
+    pEnrollDescriptor->setCallbacks(&dscCallbacks);
+
+    NimBLEService* pDeleteSerivce = pServer->createService("f805202a-249c-11eb-adc1-0242ac120002");
+    NimBLECharacteristic* pDeleteCharacteristic = pDeleteSerivce->createCharacteristic(
+                                               "fc1ca822-249c-11eb-adc1-0242ac120002",
+                                               NIMBLE_PROPERTY::READ |
+                                               NIMBLE_PROPERTY::WRITE |
+                                               NIMBLE_PROPERTY::READ_ENC |
+                                               NIMBLE_PROPERTY::WRITE_ENC
+                                              );
+  
+    pDeleteCharacteristic->setValue("0");
+    pDeleteCharacteristic->setCallbacks(&chrCallbacks);
+
+    NimBLEDescriptor* pDeleteDescriptor = pDeleteCharacteristic->createDescriptor(
+                                               "012f3d34-249d-11eb-adc1-0242ac120002",
+                                               NIMBLE_PROPERTY::READ | 
+                                               NIMBLE_PROPERTY::WRITE|
+                                               NIMBLE_PROPERTY::WRITE_ENC, // only allow writing if paired / encrypted
+                                               20
+                                              );
+    pDeleteDescriptor->setValue("0");
+    pDeleteDescriptor->setCallbacks(&dscCallbacks);
   
 
 
     /** Start the services when finished creating all Characteristics and Descriptors */  
     pLockService->start();
     pSpeakerService->start();
+    pEnrollService->start();
+    pDeleteSerivce->start();
+
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     /** Add the services to the advertisment data **/
     pAdvertising->addServiceUUID(pLockService->getUUID());
     pAdvertising->addServiceUUID(pSpeakerService->getUUID());
-    /** If your device is battery powered you may consider setting scan response
-     *  to false as it will extend battery life at the expense of less data sent.
-     */
+    pAdvertising->addServiceUUID(pEnrollService->getUUID());
+    pAdvertising->addServiceUUID(pDeleteService->getUUID());
+
     pAdvertising->setScanResponse(true);
     pAdvertising->start();
 
